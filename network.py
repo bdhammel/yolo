@@ -13,6 +13,7 @@ CoRR, vol. abs/1506.02640, 2015.
 """
 
 import tensorflow as tf
+import matplotlib.pyplot as plt
 import numpy as np
 import json
 
@@ -23,7 +24,7 @@ from trainer import YOLOTrainer
 class YOLO:
 
     def __init__(self, config_file, weights_dir="tiny_yolo_weights/", 
-                    learning_rate=1e-2, debug=False):
+                    learning_rate=1e-2, debug=False, save_path=None):
         """Initialize the YOLO network based on a configuration file
 
         Note
@@ -48,6 +49,9 @@ class YOLO:
         self.train_op = tf.train.AdamOptimizer(learning_rate).minimize(self.loss)
         print("...done")
 
+        # initialize a saver to save the weights
+        self.saver = tf.train.Saver()
+
 
     def _parse_yolo_out(self, output):
         """Extract relevant information from the output of the network
@@ -69,7 +73,7 @@ class YOLO:
         pass
 
 
-    def _perdict(self):
+    def perdict(self):
         """
         """
         pass
@@ -361,7 +365,8 @@ class YOLO:
         self.session = session
 
 
-    def train(self, trainer, epochs=135, batch_sz=64):
+    def train(self, trainer, epochs=135, batch_sz=64, save_model=True, 
+            save_path=None, show_fig=True):
         """
 
         Args
@@ -378,6 +383,8 @@ class YOLO:
 
         print("Training the network")
 
+        costs = []
+
         for e in range(epochs):
             batch_count = 0
             for batch_in, batch_tru in trainer.get_batches(batch_sz):
@@ -390,12 +397,34 @@ class YOLO:
 
                 print("\tepoch: ", e, "batch: ", batch_count, "loss: ", l)
                 batch_count += 1
+                costs.append(l)
 
                 if self.debug:
                     try:
                         self.debug_output()
                     except:
                         pass
+        
+        # plot the network loss over time to see improvement 
+        if show_fig:
+            plt.plot(costs)
+            plt.show()
+
+        # Save the trained weights to the given path
+        if save_model and save_path:
+            print("Saving the trained weights")
+            self.saver.save(sess=self.session, save_path=save_path)
+            print("...done")
+
+
+    def restore_saved_model(self, path=None):
+        """Restore a saved model
+
+        Args
+        ----
+        path (str) : the path to the directory containing the saved session
+        """
+        self.saver.restore(sess=self.session, save_path=self.save_path)
 
 
 if __name__ == "__main__":
@@ -406,5 +435,9 @@ if __name__ == "__main__":
     with tf.Session() as session:
         session.run(tf.global_variables_initializer())
         tinyyolo.set_session(session)
-        tinyyolo.train(yolo_trainer)
+        tinyyolo.train(yolo_trainer, save_path="saved_weights/tiny_yolo",
+                save_model=True)
+
+
+
 
