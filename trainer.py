@@ -4,6 +4,7 @@ import glob
 import os
 from PIL import Image, ImageDraw
 from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 
 from utils import pix_to_grid
 
@@ -21,18 +22,18 @@ class YOLOTrainer:
         image_dir (str) : path to director that contains the images
         """
 
-        try:
+        if pickled_images is not None and pickled_labels is not None:
             print("loading from file")
             self.images = np.load(pickled_images)
             self.labels = np.load(pickled_labels)
-        except:
-            print("Generating 208 x 208 data set and saving")
-            image_dir = "./data/images"
-            labels_dir = "./data/labels"
-            self.clean_and_pickle(image_dir, labels_dir)
+            print("...done")
+            self.process_images_and_labels()
 
-        print("...done")
 
+    def process_images_and_labels(self):
+        """Take the data loaded from the binary file, or loaded in by
+        clean_and_pickle, and format it for the network
+        """
         print("loading data onto reel")
         self._load_reel()
         print("...done")
@@ -41,7 +42,8 @@ class YOLOTrainer:
         self._split_to_train_and_test()
         print("...done")
 
-    def clean_and_pickle(self, image_dir, labels_dir, show=False):
+
+    def clean_and_pickle(self, image_dir, labels_dir, show=False, save=True):
         """
 
         Args
@@ -57,25 +59,25 @@ class YOLOTrainer:
 
         for img_path in image_paths:
 
-            img = Image.open(img_path)
+            raw_img = Image.open(img_path)
 
             # Don't bother reading in the image if it's a different type
             # I don't want to screw around with them, there's only a few
-            if img.mode != "RGB":
+            if raw_img.mode != "RGB":
                 continue
 
             # Crop the image to a square, based on the smallest dimension
-            org_shape = np.array(img.size)
+            org_shape = np.array(raw_img.size)
             min_dim = org_shape.min()
             center = org_shape/2
             left = center[0] - min_dim/2
             right = center[0] + min_dim/2
             bottom = center[1] + min_dim/2
             top = center[1] - min_dim/2
-            img = img.crop((left, top, right, bottom))
+            im = raw_img.crop((left, top, right, bottom))
 
             # resize to the input shape expected by YOLO
-            im = img.resize((self._dim, self._dim))
+            im = im.resize((self._dim, self._dim))
 
             # construct the path where the image label is held
             _img_file_name = os.path.splitext(
@@ -116,6 +118,7 @@ class YOLOTrainer:
 
                 # Convince yourself the conversion was correct
                 if show and input("draw? ") == "y":
+                    raw_img.show()
                     x = rx * self._dim
                     y = ry * self._dim
                     w = rw * self._dim
@@ -127,21 +130,38 @@ class YOLOTrainer:
                             fill=None, 
                             outline=0)
                     im.show()
-
-            images.append(np.array(im).flatten())
+            
+            # Flatten and normalize images
+            im = np.array(im)/255
+            
+            # append to the data set
+            images.append(im)
             labels.append(image_labels)
 
         self.images = np.asarray(images)
         self.labels = np.asarray(labels)
 
-        print("saving data set")
-        np.save("./data/images", self.images)
-        np.save("./data/labels", self.labels)
+        # save the data to a binary file for future use
+        if save:
+            print("saving data set")
+            np.save("./data/images", self.images)
+            np.save("./data/labels", self.labels)
+
+        # load the newly imported in the yolo format
+        self.process_images_and_labels()
 
 
     def _load_reel(self):
+        """Convert labels into tensor form
 
-        images = np.reshape(self.images, (-1, self._dim, self._dim, 3))
+        Using the given labels of the form:
+            <class> <x coor> <y coor> <w coor> <h coor>
+            
+        Generate a tensor that matches the output style of yolo
+        such that a 7 x 7 matrix, corresponding to the 
+        """
+
+        #images = np.reshape(self.images, (-1, self._dim, self._dim, 3))
 
         indicator_obj = []
         xx = []
@@ -186,19 +206,40 @@ class YOLOTrainer:
         self.gndTru = np.concatenate((cc, xx, yy, ww, hh, indicator_obj), axis=3)
 
     def _split_to_train_and_test(self):
-        images = self.images.reshape(-1, 208, 208, 3)
+        """Generate train an test sets from the batch 
 
-        self.imgTrain, self.imgTest, self.gndTruTrain, self.gndTruTest = train_test_split(
-                images, 
-                self.gndTru, 
-                test_size=0.33, 
-                random_state=42)
+        If this operation has already been done, don't to it again, otherwise
+        you risk mixing test data into training set
 
-        return self.imgTrain, self.imgTest, self.gndTruTrain, self.gndTruTest
+        Attributes
+        ----------
+        imgTrain
+        imgTest
+        gndTruTrain
+        gndTruTest
+
+        """
+        #images = self.images.reshape(-1, 208, 208, 3)
+
+        try:
+            self.imgTrain
+            self.imgTest
+            self.gndTruTrain
+            self.gndTruTest
+        except:
+            self.imgTrain, self.imgTest, self.gndTruTrain, self.gndTruTest = train_test_split(
+                    self.images, 
+                    self.gndTru, 
+                    test_size=0.33, 
+                    random_state=42)
+
+            self.imgTrain, self.imgTest, self.gndTruTrain, self.gndTruTest
+        else:
+            print("Data already split into train and test sets. Doing nothing...")
 
 
     def get_batches(self, batch_sz):
-        """
+        """split the data up into batches
 
         TODO
         ----
@@ -206,21 +247,44 @@ class YOLOTrainer:
         """
 
         _iter = []
+        images, labels = shuffle(self.imgTrain, self.gndTruTrain)
         batch_grp = np.asarray(range(batch_sz))
         while True:
             batch_grp += batch_sz
             try:
                 _iter.append(
-                        (self.imgTrain[batch_grp], 
-                        self.gndTruTrain[batch_grp]))
+                    (images[batch_grp], labels[batch_grp])
+                )
             except:
                 break
 
         return _iter
 
+    def test_self(self):
+        """Run through a series of tests to make sure the data is okay
 
+        Tests
+        -----
+        Make sure there are no NAN values
+        """
+
+        print("running tests on the input data")
+        assert not np.any(np.isnan(self.images))
+        print("All values are real (no NAN)")
+        print("image shapes: ", self.images.shape)
+        print("label shapes: ", self.gndTru.shape)
+        print("...done")
+
+def convert_raw_images(yolo_trainer):
+    image_dir = "./data/images"
+    labels_dir = "./data/labels"
+    yolo_trainer.clean_and_pickle(image_dir, labels_dir)
 
 if __name__ == "__main__":
     yolo_trainer = YOLOTrainer("./data/images.npy", "./data/labels.npy")
+    #convert_raw_images(yolo_trainer)
+    yolo_trainer.test_self()
     batches = yolo_trainer.get_batches(64)
+
+
 

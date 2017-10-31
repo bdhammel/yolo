@@ -3,8 +3,8 @@
     {
       "batch":64,
       "subdivisions":2,
-      "height":416,
-      "width":416,
+      "height":208,
+      "width":208,
       "channels":3,
       "momentum":0.9,
       "decay":0.0005,
@@ -145,7 +145,7 @@
       "stride":1,
       "pad":1,
       "filters":12,
-      "activation":"leaky"
+      "activation":"sigmoid"
     }
 ]
 }

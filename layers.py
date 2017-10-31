@@ -5,11 +5,16 @@ from utils import lrelu
 
 class ConvolutionalLayer:
     """A Convolutional Layer
+
+    TODO
+    ----
+    Add in Dropout
     """
 
     ACTIVATION = {
             "leaky":lrelu,
             "relu":tf.nn.relu,
+            "sigmoid":tf.nn.sigmoid,
             }
 
     def __init__(self, name, input_shape, shape, stride, pad, batch_normalize, activation, *args, **kwargs):
@@ -67,6 +72,8 @@ class ConvolutionalLayer:
         return tf.Variable(init, name="W")
 
     def _load_weights(self, file_name):
+        """This method will be responsible for loading in pretrained weights
+        """
         pass
 
     def _normalize(self, a, istraining, decay=1e-3):
@@ -75,9 +82,9 @@ class ConvolutionalLayer:
         Args
         ----
         a (Tensor) : imput thensor to normalize
-
         istraining (bool) : optional, denotes if the network is being trained, important
             for batch normalization 
+        decay (float) : 
 
         Returns
         -------
@@ -118,7 +125,7 @@ class ConvolutionalLayer:
 
         Args
         ----
-        Z (Tensor) : 
+        Z (Tensor) : input tensor into the convolutional layer
         istraining (bool) : optional, denotes if the network is being trained, important
             for batch normalization 
 
@@ -168,6 +175,13 @@ class PoolingLayer:
     def forward(self, Z, *args):
         """Perform a pooling operation on the input data
 
+        Args
+        ----
+        Z (Tensor) : input tensor into the convolutional layer
+        *args : Because 'forward' is called on an ambiguous 'layer' in the network
+            it could refer to a pooling layer or convolutional layer. *args 
+            catches extra arguments which are not applicable to pooling.forward
+
         Returns
         -------
         tensorflow Tensor
@@ -192,3 +206,6 @@ class PoolingLayer:
                 np.divide(self.input_shape[:-1], self.strides[1:-1])
                 )
         return np.array([*output_shape, self.input_shape[-1]]).astype(np.int32)
+
+
+
