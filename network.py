@@ -5,10 +5,15 @@ Image localization and classification network
 
 References
 ----------
-
 (*) J. Redmon, S. K. Divvala, R. B. Girshick, and A. Farhadi, 
 "You only look once: Unified, real-time object detection," 
 CoRR, vol. abs/1506.02640, 2015.
+
+(**)  J. Redmon and A. Farhadi, "YOLO9000: better, faster, stronger," 
+CoRR, vol. abs/1612.08242, 2016.
+
+(***) K. Buhler,  J. Lambert, and M. Vilim, "YoloFlow Real-time Object Tracking 
+in Video CS 229 Course Project," unpublished
 
 """
 

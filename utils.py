@@ -38,43 +38,6 @@ def pix_to_grid(x, y, S=7, im_size=208):
             np.floor(alpha_y * y).astype(np.int32))
 
 
-def iou(B1, B2):
-    """Find the Intersection of Union
-
-    Arg
-    ---
-    B1 [x, y, w, h]
-    B2 [x, y, w, h]
-
-    Returns
-    -------
-    float
-    """
-
-    _l1 = x1 - w1/2
-    _l2 = x2 - w2/2
-    _r1 = x1 + w1/2
-    _r2 = x2 + w2/2
-
-    _t1 = y1 + h1/2
-    _b1 = y1 - h1/2
-    _t2 = y2 + h2/2
-    _b2 = y2 - h2/2
-
-    x_overlap = np.maximum(
-            np.minimum(_r1, _r2) - np.maximum(_l1, _l2),
-            0
-            )
-    y_overlap = np.maximum(
-            np.minimum(_b1, _b2) - np.maximum(_t1, _t2),
-            0
-            )
-
-    overlap_area = x_overlap * y_overlap;
-    total_area = w1*h1 + w2*h2 - overlap_area
-
-    return overlap_area / np.maximum(total_area, 1e-10)
-
 def maximum(tensor1, tensor2, axis):
     """Find the maximum value along an axis between two tensors
 
@@ -103,6 +66,7 @@ def maximum(tensor1, tensor2, axis):
                 _tensor,
                 axis=axis),
             shape=shape)
+
 
 def minimum(tensor1, tensor2, axis):
     """Find the minimum value along an axis between two tensors
@@ -135,7 +99,11 @@ def minimum(tensor1, tensor2, axis):
 
 
 def tf_iou(x, y, w, h, x_hat, y_hat, w_hat, h_hat):
-    """
+    """Find the intersection of Union of the prediction and true values
+
+    Compare the x,y,w,h coors with the predicted values, to find the ones with 
+    the highest overlapping area
+
     Args
     ----
     x (tensor) :
@@ -149,6 +117,7 @@ def tf_iou(x, y, w, h, x_hat, y_hat, w_hat, h_hat):
 
     Returns
     -------
+    Tensor of shape batch_sz x S x S x B
 
     """
     l = x - w/2
@@ -206,7 +175,21 @@ def tf_iou(x, y, w, h, x_hat, y_hat, w_hat, h_hat):
     return overlap_area / maximum(total_area, _epsilon, axis=3)
 
 def list_slice(tensor, indicies, axis):
-    """
+    """Slice up a tensor for each indices in a list
+
+    The same mechanics as this numpy operation:
+
+    x[...,[0,2,5]]
+
+    Args
+    ----
+    tensor (Tensor) : the tensor to slice 
+    indices (list:ints) : a list of indices to slice the tensor along
+    axis (int) : the axis along which to perform the operation
+
+    Returns
+    -------
+    Tensor
     """
 
     slices = []   
@@ -219,7 +202,18 @@ def list_slice(tensor, indicies, axis):
 
 
 def tile_slice(tensor, index, axis, number):
-    """
+    """Take a slice of a tensor and concatenate it along an axis 
+
+    Args
+    ----
+    tensor (Tensor) : the tensor to slice 
+    indices (int) : the dimension index
+    axis (int) : the axis along which to perform the concatinated 
+    number (int) : the number of times the slice should be concatinated 
+
+    Returns
+    -------
+    Tensor
     """
     tensor_slice = slice_and_keep_dims(tensor, index, axis)
     tensor_list = [tensor_slice]*number
@@ -229,6 +223,16 @@ def tile_slice(tensor, index, axis, number):
 
 def slice_and_keep_dims(tensor, index, axis):
     """Slice a tensor but keep the dimensions the same
+
+    Args
+    ----
+    tensor (Tensor) : the tensor to slice 
+    indices (int) : the dimension index
+    axis (int) : the axis along which to perform the slice
+
+    Returns
+    -------
+    Tensor
     """
 
     ## Set the shape of the output tensor. 

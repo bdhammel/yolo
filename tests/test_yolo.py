@@ -316,6 +316,32 @@ class LossFnTests(unittest.TestCase):
         self.assertEqual(loss, loss_hat)
 
 
+    def test_classification_error(self):
+        pass
+
+
+class PredictionTests(unittest.TestCase):
+
+
+    @classmethod
+    def setUpClass(cls):
+        """Start interactive session"""
+        cls.session = tf.InteractiveSession()
+
+
+    @classmethod
+    def tearDownClass(cls):
+        """Stop interactive session"""
+        cls.session.close()
+
+
+    def test_yolo_works_as_classifier(self):
+        pass
+
+
+
+
+
 if __name__ == '__main__':
     """run tests
     """

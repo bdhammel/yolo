@@ -35,24 +35,20 @@ def visulize_yolo_input_data():
 def run_yolo_network():
     """Feed data into the network 
 
-    Show that the loss diverges to nan
+    Show that the loss does not converge 
 
     Specs from the paper, (*)
     -------------------------
     Epochs: 135
     Learning rate : 1e-2 - 1e-4
 
-    TODO
-    ----
-    Should also try gradient clipping 
-
     """
 
     # import data from binary file
     yolo_trainer = YOLOTrainer("./data/images.npy", "./data/labels.npy")
 
-    # Initialize the network, show that increasing learning rate doesn't 
-    # stabilize system 
+    # Initialize the network, show that decreasing learning rate doesn't 
+    # improve convergence
     # learning_rate=1e-2
     # learning_rate=1e-8
     tinyyolo = YOLO(
@@ -71,18 +67,18 @@ def run_yolo_network():
 def generate_latex_loss_eqn():
     """Display the YOLO Loss function using matplotlib
     """
-    latex = r"$\lambda_{\rm coor} \sum\limits^{S^2} \sum\limits^{B} \mathbbm{1}_{ij}^{\rm obj}$"
-    latex += r"$\left [ (x-\hat{x})^2 + (y-\hat{y})^2 + (\sqrt{w}-\sqrt{\hat{w}})^2 + (\sqrt{h}-\sqrt{\hat{h}})^2\right ]$" 
+    latex = r"$\lambda_{\rm coor} \sum\limits^{S^2}_i \sum\limits^{B}_j \mathbbm{1}_{ij}^{\rm obj}$"
+    latex += r"$\left [ (x_i-\hat{x}_i)^2 + (y_i-\hat{y}_i)^2 + (\sqrt{w_i}-\sqrt{\hat{w}_i})^2 + (\sqrt{h_i}-\sqrt{\hat{h}_i})^2\right ]$" 
     latex += "\n"
-    latex += r"$+ \sum\limits^{S^2} \sum\limits^B \mathbbm{1}^{\rm obj}_{ij} ( C - \hat{C} )$"
+    latex += r"$+ \sum\limits^{S^2}_i \sum\limits^B_j \mathbbm{1}^{\rm obj}_{ij} ( C_i - \hat{C}_i )^2$"
     latex += "\n"
-    latex += r"$+ \lambda_{\rm noobj} \sum\limits^{S^2} \sum\limits^B \mathbbm{1}^{\rm noobj}_{ij} ( C - \hat{C} )$"
+    latex += r"$+ \lambda_{\rm noobj} \sum\limits^{S^2}_i \sum\limits^B_j \mathbbm{1}^{\rm noobj}_{ij} ( C_i - \hat{C}_i )^2$"
     latex += "\n"
-    latex += r"$+ \sum\limits^{S^2} \mathbbm{1}_i^{\rm obj} \sum (p-\hat{p})^2$"
+    latex += r"$+ \sum\limits^{S^2}_i \mathbbm{1}_i^{\rm obj} \sum\limits_c (p_i(c) - \hat{p}_i(c))^2$"
 
 
     plt.figure(figsize=(9,4))
-    plt.text(0, 0.3, latex, fontsize=20)                                  
+    plt.text(0, 0.1, latex, fontsize=20)                                  
     ax = plt.gca()
     ax.axis('off')
     plt.show()
@@ -117,7 +113,7 @@ def check_yolo_as_classifier():
     tinyyolo = YOLO(
             config_file="network_configs/tiny_yolo.json", 
             debug=True,
-            learning_rate=1e-4
+            learning_rate=1e-2
             )
 
     perr = tinyyolo.debug_dump["perr"]
@@ -180,20 +176,12 @@ if __name__ == "__main__":
     ## Show the data being used
     # visulize_yolo_input_data()
 
-    ## Run yolo network to demonstrate nan divergence in loss
+    ## Run yolo network to demonstrate non-convergence in loss
     # run_yolo_network()
 
     ## Display the loss equation 
-    # generate_latex_loss_eqn()
+    generate_latex_loss_eqn()
 
     ## Check that the calculated squared error is correct
     # check_calculated_squared_error()
 
-    ## Check that YOLO can correctly classify objects
-    # check_yolo_as_classifier()
-
-    ## Check input data
-    # check_input_data()
-
-    ## Launch tf_debugger
-    run_yolo_with_debugger()
